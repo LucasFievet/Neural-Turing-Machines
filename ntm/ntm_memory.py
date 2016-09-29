@@ -56,6 +56,70 @@ class NtmMemory:
         add_matrix = np.array([wi * a for wi in w])
         self.memory += add_matrix
 
+    def content_weights(self, b, k):
+        """
+        TODO: figure out how to handle zero vectors!
+        Return the location content weights for given beta and key vector
+        :param b: Key strength.
+        :param k: Key vector.
+        :return: Normalized weighting based on similarity
+        """
+
+        memory_norms = [np.linalg.norm(row) for row in self.memory]
+        memory_norms = [norm if norm > 0 else 1 for norm in memory_norms]
+
+        similarity = self.memory.dot(k) / memory_norms
+        similarity /= np.linalg.norm(k)
+
+        w = np.exp(b * similarity)
+        w /= np.sum(w)
+
+        return w
+
+    @staticmethod
+    def gated_weighting(g, w_content, w_previous):
+        """
+        Computes the gated weighting
+        :param g: The gate weighting.
+        :param w_content: The location content weights.
+        :param w_previous: Previous weights of the head.
+        :return: Gated weighting.
+        """
+
+        return g * w_content + (1-g) * w_previous
+
+    @staticmethod
+    def rotate_weights(w, s):
+        """
+        Convolutional rotation of weights based on vector s.
+        :param w: The weights.
+        :param s: Convolution vector.
+        :return: Rotated weights.
+        """
+
+        n = len(w)
+
+        w = [
+            np.sum([w[j] * s[(n + i - j) % n] for j in range(0, n)])
+            for i in range(0, n)
+        ]
+
+        return w
+
+    @staticmethod
+    def sharpen_weights(w, gamma):
+        """
+        Sharpen the weight with exponent gamma.
+        :param w: The weights.
+        :param gamma: The sharpening exponent.
+        :return: Sharpened weights
+        """
+
+        w = w**gamma
+        w /= np.sum(w)
+
+        return w
+
     def assert_vector(self, v, name=""):
         if len(v) != self.m:
             raise AssertionError(
